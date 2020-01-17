@@ -2,35 +2,64 @@ import cx_Oracle
 import pandas as pd
 import logging
 
-
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-# logging.disable(logging.CRITICAL)
+
+
+logging.disable(logging.INFO)
 
 class Parameter:
-    def __init__(self, table_name, id_realization_1, id_realization_2, sql_query, db):
+    def __init__(self, table_name, id_realization_1, sql_query, db, different=False, id_realization_2='0'):
         self.table_name = table_name
         self.id_realization_1 = id_realization_1
         self.id_realization_2 = id_realization_2
         self.sql_query = sql_query
         self.db = db
+        self.different = different
 
 
 def get_data_from_table(Parameter):
+    logging.debug(f'Устанавливаем соединение c {Parameter.db} установлено')
     connection = cx_Oracle.connect(Parameter.db)
     logging.debug(f'Соединение c {Parameter.db} установлено')
-    sql = Parameter.sql_query + Parameter.id_realization_1 + '\nminus\n' + Parameter.sql_query + Parameter.id_realization_2
-    logging.debug(sql)
-    with connection.cursor() as cur:
-        cur.arraysize = 500
-        data = cur.execute(sql)
-        logging.debug(f'Запрос для {Parameter.table_name} отправлен')
-        columns = [desc[0] for desc in cur.description]
-        data = data.fetchall()
-        logging.debug(f'Данные для {Parameter.table_name} получены')
-        df = pd.DataFrame(data, columns=columns)
-        df.to_csv(Parameter.table_name + '.csv')
-        print(f'ТАБЛИЦА ВЫГРУЖЕНА В {Parameter.table_name}.csv')
 
+    if Parameter.different:
+        logging.debug('Формируем запрос для выгрузки реализации')
+        sql = Parameter.sql_query + Parameter.id_realization_1
+    else:
+        logging.debug('Формируем запрос для выгрузки результата сравнения реализации')
+        sql = Parameter.sql_query + Parameter.id_realization_1 + '\nminus\n' + Parameter.sql_query + Parameter.id_realization_2
+
+    logging.debug(sql)
+
+    with connection.cursor() as cur:
+        logging.debug('Открываем курсор')
+        cur.execute(sql)
+        # Получаем именования колонок
+        columns = [desc[0] for desc in cur.description]
+
+        # Устанавливаем количество строк для fetch
+        numRows = 10000
+
+        # Счетчик выгруженных строк
+        sum_rows = 0
+
+        while True:
+            rows = cur.fetchmany(numRows)
+            logging.debug('Запрос отправлен формируем датафрейм')
+
+            df = pd.DataFrame(list(rows), columns=columns)
+            # Сначала записываем в файл с заголовком
+            if sum_rows == 0:
+                df.to_csv(f'{Parameter.table_name}.csv', mode='a', header=True, index=False)
+            # Потом дописываем в файл без заголовка
+            else:
+                df.to_csv(f'{Parameter.table_name}.csv', mode='a', header=False, index=False)
+
+            sum_rows += len(rows)
+            logging.info(f'В {Parameter.table_name}.csv выгружено {sum_rows}  строк..')
+            if not rows:
+                print(f'ТАБЛИЦА ВЫГРУЖЕНА В {Parameter.table_name}.csv')
+                break
 
 
 SQL_REPS_CR_RES_RT = f"""select c_thrd_num, c_dog_index, c_dog_ref, c_debt_code,
@@ -56,7 +85,9 @@ SQL_REPS_DEBT_RT = """select t.c_dog_ref, t.c_acc_num, t.c_debt_code, t.c_line_r
                              t.c_uch_debt_code, t.c_line_debt_summ#summ_rub, t.c_line_debt_summ#summ_val, t.c_prod_res, t.c_type_prod_res, t.c_acc_active_type,
                              t.c_port_res, t.c_wtype, t.c_acc_name, t.c_wtype_res, t.c_last_res_summ#summ_rub, t.c_last_res_summ#summ_val, c.class_id, k.c_name
                         from z#reps_debt_rt t, z#pr_cred c, z#kind_credits k
-                       where t.c_pn = """
+                        where c.id = t.c_dog_ref
+                        and c.c_kind_credit = k.id
+                        and t.c_pn = """
 
 SQL_RT_NAVIGATOR = """SELECT C_1 Дата_расчета,
                              C_2 Филиал,
