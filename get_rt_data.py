@@ -1,104 +1,62 @@
-import datetime
-from SQLs import SQL_REPS_CR_RES_RT, \
-    SQL_REPS_DEBT_RT, \
-    SQL_REPS_RES_INFO_RT, \
-    SQL_RT_NAVIGATOR, \
-    Parameter, \
-    get_data_from_table
 from concurrent.futures import ThreadPoolExecutor
+from parameter_object import Parameter
+from work_with_db import *
+from sql import SQL
+import datetime
 import logging
 
-# db = 'IBS/IBS_EXPOBANK1908@BARKDB.BARK_RPT'
-db = 'IBS/IBS@57_TEST_REP_OMSK'
-logging.disable(logging.DEBUG)
+while True:
+    db = input(
+        '''
+УКАЖИ СХЕМУ ДЛЯ ПОДКЛЮЧЕНИЯ НАПРИМЕР:
 
-print("""
-1. REPS_CR_RES_RT
-2. REPS_DEBT_RT
-3. REPS_RES_INFO_RT
-4. RT_NAVIGATOR
-""")
+IBS/IBS_EXPOBANK1908@BARKDB.BARK_RPT
+IBS/IBS@57_TEST_REP_OMSK
+IBS/IBS@57_TEST_REP_TOMSK
+IBS/IBS@57_TEST_REP_NSK1
+IBS/IBS@57_TEST_REP_NSK2
 
-different = str(input('Сравнение или все?:'))
-inp = str(input('УКАЖИ НОМЕРА ВЫГРУЖАЕМЫХ ТАБЛИЦ В ФОРМАТЕ (12 или 1234):'))
-if not different:
-    realisation_1 = str(input("ВВЕДИ id 1 РЕАЛИЗАЦИИ:"))
-    realisation_2 = str(input("ВВЕДИ id 2 РЕАЛИЗАЦИИ:"))
-else:
-    realisation_1 = str(input("ВВЕДИ id РЕАЛИЗАЦИИ:"))
-    realisation_2 = ''
+СХЕМА:
+''')
+    logging.disable(logging.DEBUG)
 
-startTime = datetime.datetime.today()
-print(startTime)
+    num = 0
+    table_names = list(SQL.keys())
+    for table_name in table_names: print(f'{num}.', table_name); num += 1
 
-logging.debug(f"Realisation_1 = {realisation_1}, type = {bool(realisation_1)} ")
-logging.debug(f"Realisation_2 = {realisation_2}, type = {bool(realisation_1)} ")
+    tables = input('\nУКАЖИ НОМЕРА ВЫГРУЖАЕМЫХ ТАБЛИЦ В ФОРМАТЕ (12 или 0123):')
+    id_realization_1 = str(input("ВВЕДИ id 1 РЕАЛИЗАЦИИ:"))
+    id_realization_2 = str(input("ВВЕДИ id 2 РЕАЛИЗАЦИИ:"))
 
-Params = []
-for i in inp:
-    if not different:
-        logging.info('Формируем параметры для выгрузки расхождений')
-        if i == '1':
-            logging.info('Формируем параметры для таблицы REPS_CR_RES_RT')
-            Params.append(
-                Parameter(table_name='SQL_REPS_CR_RES_RT_1', id_realization_1=realisation_1,
-                          id_realization_2=realisation_2, sql_query=SQL_REPS_CR_RES_RT, db=db))
-            Params.append(
-                Parameter(table_name='SQL_REPS_CR_RES_RT_2', id_realization_1=realisation_2,
-                          id_realization_2=realisation_1, sql_query=SQL_REPS_CR_RES_RT, db=db))
-        elif i == '2':
-            logging.info('Формируем параметры для таблицы REPS_DEBT_RT')
-            Params.append(
-                Parameter(table_name='SQL_REPS_DEBT_RT_1', id_realization_1=realisation_1,
-                          id_realization_2=realisation_2, sql_query=SQL_REPS_DEBT_RT, db=db))
-            Params.append(
-                Parameter(table_name='SQL_REPS_DEBT_RT_2', id_realization_1=realisation_2,
-                          id_realization_2=realisation_1, sql_query=SQL_REPS_DEBT_RT, db=db))
-        elif i == '3':
-            logging.info('Формируем параметры для таблицы REPS_RES_INFO_RT')
-            Params.append(
-                Parameter(table_name='SQL_REPS_RES_INFO_RT_1', id_realization_1=realisation_1,
-                          id_realization_2=realisation_2, sql_query=SQL_REPS_RES_INFO_RT, db=db))
-            Params.append(
-                Parameter(table_name='SQL_REPS_RES_INFO_RT_2', id_realization_1=realisation_2,
-                          id_realization_2=realisation_1, sql_query=SQL_REPS_RES_INFO_RT, db=db))
-        elif i == '4':
-            logging.info('Формируем параметры для получения данных из представления навигатора')
-            Params.append(
-                Parameter(table_name='SQL_RT_NAVIGATOR_1', id_realization_1=realisation_1,
-                          id_realization_2=realisation_2, sql_query=SQL_RT_NAVIGATOR, db=db))
-            Params.append(
-                Parameter(table_name='SQL_RT_NAVIGATOR_2', id_realization_1=realisation_2,
-                          id_realization_2=realisation_1, sql_query=SQL_RT_NAVIGATOR, db=db))
-    else:
-        logging.info('Формируем параметры для выгрузки всей таблицы')
-        if i == '1':
-            logging.info('Формируем параметры для таблицы REPS_CR_RES_RT')
-            Params.append(
-                Parameter(table_name='SQL_REPS_CR_RES_RT_1', id_realization_1=realisation_1,
-                          sql_query=SQL_REPS_CR_RES_RT, db=db, different=True))
-        elif i == '2':
-            logging.info('Формируем параметры для таблицы REPS_DEBT_RT')
-            Params.append(
-                Parameter(table_name='SQL_REPS_DEBT_RT_1', id_realization_1=realisation_1,
-                          sql_query=SQL_REPS_DEBT_RT, db=db, different=True))
-        elif i == '3':
-            logging.info('Формируем параметры для таблицы REPS_RES_INFO_RT')
-            Params.append(
-                Parameter(table_name='SQL_REPS_RES_INFO_RT_1', id_realization_1=realisation_1,
-                          sql_query=SQL_REPS_RES_INFO_RT, db=db, different=True))
-        elif i == '4':
-            logging.info('Формируем параметры для получения данных из представления навигатора')
-            Params.append(
-                Parameter(table_name='SQL_RT_NAVIGATOR_1', id_realization_1=realisation_1,
-                          sql_query=SQL_RT_NAVIGATOR, db=db, different=True))
+    startTime = datetime.datetime.today()
+    print(startTime)
+    Params = []
+    for table in tables:
+        table_name = table_names[int(table)]
+        sql_query = SQL[table_name]
+        if id_realization_2 != '':
+            Params += [Parameter(
+                table_name=table_name,
+                id_realization_1=id_realization_1,
+                id_realization_2=id_realization_2,
+                sql_query=sql_query,
+                db=db)]
+            Params += [Parameter(
+                table_name=table_name,
+                id_realization_1=id_realization_2,
+                id_realization_2=id_realization_1,
+                sql_query=sql_query,
+                db=db)]
+        else:
+            Params += [Parameter(
+                table_name=table_name,
+                id_realization_1=id_realization_1,
+                sql_query=sql_query,
+                db=db)]
 
-print(f'Максимальное возможное количество потоков {len(Params)}')
-threads = int(input('Укажи количество потоков:\n'))
+    with ThreadPoolExecutor(max_workers=len(Params)) as executor:
+        logging.debug('Запускаем потоки')
+        list(map(lambda param: executor.submit(get_data_from_table, param), Params))
 
-with ThreadPoolExecutor(max_workers=threads) as executor:
-    logging.debug('Формируем потоки')
-    start_threads = {executor.submit(get_data_from_table, param): param for param in Params}
-
-endTime = datetime.datetime.today()
-print(f"ЗАВЕРШЕНО {endTime - startTime}")
+    endTime = datetime.datetime.today()
+    print(f"ЗАВЕРШЕНО {endTime - startTime}")
