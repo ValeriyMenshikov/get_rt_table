@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from parameter_object import Parameter
-from work_with_db import *
+from work_with_db import get_data_from_table
 from sql import SQL
 import datetime
 import logging
@@ -35,24 +34,10 @@ IBS/IBS@57_TEST_REP_NSK2
         table_name = table_names[int(table)]
         sql_query = SQL[table_name]
         if id_realization_2 != '':
-            Params += [Parameter(
-                table_name=table_name,
-                id_realization_1=id_realization_1,
-                id_realization_2=id_realization_2,
-                sql_query=sql_query,
-                db=db)]
-            Params += [Parameter(
-                table_name=table_name,
-                id_realization_1=id_realization_2,
-                id_realization_2=id_realization_1,
-                sql_query=sql_query,
-                db=db)]
+            Params += [(table_name, id_realization_1, id_realization_2, sql_query, db)]
+            Params += [(table_name, id_realization_2, id_realization_1, sql_query, db)]
         else:
-            Params += [Parameter(
-                table_name=table_name,
-                id_realization_1=id_realization_1,
-                sql_query=sql_query,
-                db=db)]
+            Params += [(table_name, id_realization_1, None, sql_query, db)]
 
     with ThreadPoolExecutor(max_workers=len(Params)) as executor:
         logging.debug('Запускаем потоки')
