@@ -34,8 +34,8 @@ IBS/IBS@57_TEST_REP_NSK2
         table_name = table_names[int(table)]
         sql_query = SQL[table_name]
         if id_realization_2 != '':
-            Params += [(table_name, id_realization_1, id_realization_2, sql_query, db)]
-            Params += [(table_name, id_realization_2, id_realization_1, sql_query, db)]
+            Params += [(table_name + '1', id_realization_1, id_realization_2, sql_query, db)]
+            Params += [(table_name + '2', id_realization_2, id_realization_1, sql_query, db)]
         else:
             Params += [(table_name, id_realization_1, None, sql_query, db)]
 
